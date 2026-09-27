@@ -9,8 +9,14 @@ import (
 )
 
 func (m *Model) startFetch() tea.Cmd {
+	if m.fetchCancel != nil {
+		m.fetchCancel()
+	}
+
+	m.fetchCtx, m.fetchCancel = context.WithCancel(context.Background())
+
 	m.fetchResults = m.service.Fetch(
-		context.Background(),
+		m.fetchCtx,
 		m.repos,
 	)
 

@@ -46,19 +46,11 @@ func (s *Service) Fetch(
 			i, repo := i, repo
 
 			g.Go(func() error {
+				// Acquire a worker slot, but don't wait forever
+				// if the fetch has been cancelled.
 				select {
 				case sem <- struct{}{}:
 				case <-ctx.Done():
-					select {
-					case out <- Result{
-						Index: i,
-						Result: model.RepositoryResult{
-							Repository: repo,
-							Err:        ctx.Err(),
-						},
-					}:
-					case <-ctx.Done():
-					}
 					return nil
 				}
 
@@ -68,28 +60,25 @@ func (s *Service) Fetch(
 
 				p, err := s.registry.Get(repo.Provider)
 				if err != nil {
-					out <- Result{
+					return s.emit(ctx, out, Result{
 						Index: i,
 						Result: model.RepositoryResult{
 							Repository: repo,
 							Err:        err,
 						},
-					}
-					return nil
+					})
 				}
 
 				release, err := p.LatestRelease(ctx, repo)
 
-				out <- Result{
+				return s.emit(ctx, out, Result{
 					Index: i,
 					Result: model.RepositoryResult{
 						Repository: repo,
 						Release:    release,
 						Err:        err,
 					},
-				}
-
-				return nil
+				})
 			})
 		}
 
@@ -97,4 +86,17 @@ func (s *Service) Fetch(
 	}()
 
 	return out
+}
+
+func (s *Service) emit(
+	ctx context.Context,
+	out chan<- Result,
+	result Result,
+) error {
+	select {
+	case out <- result:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

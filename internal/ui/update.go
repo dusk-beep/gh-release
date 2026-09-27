@@ -98,21 +98,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.openSelectedReleaseCmd()
 
 		case "q", "ctrl+c":
-			return m, tea.Quit
-
-		case "r":
-			if !m.loading {
-				m.results = make([]model.RepositoryResult, len(m.repos))
-
-				for i, repo := range m.repos {
-					m.results[i] = model.RepositoryResult{
-						Repository: repo,
-					}
-				}
-
-				m.loading = true
-				return m, m.startFetch()
+			if m.fetchCancel != nil {
+				m.fetchCancel()
+				m.fetchCancel = nil
 			}
+			return m, tea.Quit
 
 		}
 
@@ -131,11 +121,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.rebuildTable()
 		}
 
+		if m.fetchResults == nil {
+			return m, nil
+		}
+
 		return m, waitForResult(m.fetchResults)
 
 	case fetchCompleteMsg:
 		m.loading = false
+
+		if m.fetchCancel != nil {
+			m.fetchCancel()
+			m.fetchCancel = nil
+		}
+
+		m.fetchCtx = nil
+		m.fetchResults = nil
+
 		m.rebuildTable()
+
+		return m, nil
 
 	case releaseNotesMsg:
 		if msg.err != nil {

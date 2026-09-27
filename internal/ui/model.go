@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
 
@@ -12,21 +14,23 @@ type Model struct {
 	service *service.Service
 	repos   []model.Repository
 
-	results      []model.RepositoryResult
-	fetchResults <-chan service.Result
-
+	results []model.RepositoryResult
 	table   table.Model
 	spinner spinner.Model
+
+	loading bool
+
+	fetchCtx     context.Context
+	fetchCancel  context.CancelFunc
+	fetchResults <-chan service.Result
+
+	width  int
+	height int
 
 	showRelease     bool
 	releaseMarkdown string
 	releaseTitle    string
 	releaseScroll   int
-
-	loading bool
-
-	width  int
-	height int
 }
 
 func New(svc *service.Service, repos []model.Repository) Model {
