@@ -11,3 +11,10 @@ type releaseNotesMsg struct {
 	body  string
 	err   error
 }
+
+type repositoryResultMsg struct {
+	index  int
+	result model.RepositoryResult
+}
+
+type fetchCompleteMsg struct{}

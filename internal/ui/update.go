@@ -8,10 +8,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+type startFetchMsg struct{}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
-		m.fetchCmd(),
+		func() tea.Msg {
+			return startFetchMsg{}
+		},
 	)
 }
 
@@ -98,14 +102,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "r":
 			if !m.loading {
+				m.results = make([]model.RepositoryResult, len(m.repos))
+
+				for i, repo := range m.repos {
+					m.results[i] = model.RepositoryResult{
+						Repository: repo,
+					}
+				}
+
 				m.loading = true
-				cmds = append(cmds, m.fetchCmd())
+				return m, m.startFetch()
 			}
+
 		}
+
+	case startFetchMsg:
+		m.loading = true
+		return m, m.startFetch()
 
 	case fetchDoneMsg:
 		m.loading = false
 		m.results = msg.results
+		m.rebuildTable()
+
+	case repositoryResultMsg:
+		if msg.index >= 0 && msg.index < len(m.results) {
+			m.results[msg.index] = msg.result
+			m.rebuildTable()
+		}
+
+		return m, waitForResult(m.fetchResults)
+
+	case fetchCompleteMsg:
+		m.loading = false
 		m.rebuildTable()
 
 	case releaseNotesMsg:

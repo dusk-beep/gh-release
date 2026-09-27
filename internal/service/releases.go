@@ -14,6 +14,11 @@ type Service struct {
 	concurrency int
 }
 
+type Result struct {
+	Index  int
+	Result model.RepositoryResult
+}
+
 func New(registry *provider.Registry, concurrency int) *Service {
 	if concurrency < 1 {
 		concurrency = 1
@@ -28,52 +33,68 @@ func New(registry *provider.Registry, concurrency int) *Service {
 func (s *Service) Fetch(
 	ctx context.Context,
 	repos []model.Repository,
-) []model.RepositoryResult {
-	results := make([]model.RepositoryResult, len(repos))
+) <-chan Result {
+	out := make(chan Result)
 
-	g, ctx := errgroup.WithContext(ctx)
-	sem := make(chan struct{}, s.concurrency)
+	go func() {
+		defer close(out)
 
-	for i, repo := range repos {
-		i, repo := i, repo
+		g, ctx := errgroup.WithContext(ctx)
+		sem := make(chan struct{}, s.concurrency)
 
-		g.Go(func() error {
-			select {
-			case sem <- struct{}{}:
-			case <-ctx.Done():
-				results[i] = model.RepositoryResult{
-					Repository: repo,
-					Err:        ctx.Err(),
+		for i, repo := range repos {
+			i, repo := i, repo
+
+			g.Go(func() error {
+				select {
+				case sem <- struct{}{}:
+				case <-ctx.Done():
+					select {
+					case out <- Result{
+						Index: i,
+						Result: model.RepositoryResult{
+							Repository: repo,
+							Err:        ctx.Err(),
+						},
+					}:
+					case <-ctx.Done():
+					}
+					return nil
 				}
-				return nil
-			}
 
-			defer func() {
-				<-sem
-			}()
+				defer func() {
+					<-sem
+				}()
 
-			p, err := s.registry.Get(repo.Provider)
-			if err != nil {
-				results[i] = model.RepositoryResult{
-					Repository: repo,
-					Err:        err,
+				p, err := s.registry.Get(repo.Provider)
+				if err != nil {
+					out <- Result{
+						Index: i,
+						Result: model.RepositoryResult{
+							Repository: repo,
+							Err:        err,
+						},
+					}
+					return nil
 				}
+
+				release, err := p.LatestRelease(ctx, repo)
+
+				out <- Result{
+					Index: i,
+					Result: model.RepositoryResult{
+						Repository: repo,
+						Release:    release,
+						Err:        err,
+					},
+				}
+
 				return nil
-			}
+			})
+		}
 
-			release, err := p.LatestRelease(ctx, repo)
+		_ = g.Wait()
+	}()
 
-			results[i] = model.RepositoryResult{
-				Repository: repo,
-				Release:    release,
-				Err:        err,
-			}
-
-			return nil
-		})
-	}
-
-	_ = g.Wait()
-
-	return results
+	return out
 }

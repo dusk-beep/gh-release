@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -19,17 +20,20 @@ import (
 )
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	if err := run(ctx, os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
+func run(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "add":
-			return runAdd(args[1:])
+			return runAdd(ctx, args[1:])
 
 		case "help", "--help", "-h":
 			printUsage()
@@ -51,18 +55,17 @@ func run(args []string) error {
 		return err
 	}
 
-	// Allow:
-	//
-	//   gh-release --config foo.toml add https://github.com/foo/bar
-	//
 	remaining := flags.Args()
+
 	if len(remaining) > 0 {
 		switch remaining[0] {
 		case "add":
-			return runAddWithConfig(*configPath, remaining[1:])
+			return runAddWithConfig(ctx, *configPath, remaining[1:])
+
 		case "help", "--help", "-h":
 			printUsage()
 			return nil
+
 		default:
 			return fmt.Errorf("unknown command %q", remaining[0])
 		}
@@ -95,11 +98,15 @@ func run(args []string) error {
 	return nil
 }
 
-func runAdd(args []string) error {
-	return runAddWithConfig(config.DefaultPath(), args)
+func runAdd(ctx context.Context, args []string) error {
+	return runAddWithConfig(ctx, config.DefaultPath(), args)
 }
 
-func runAddWithConfig(configPath string, args []string) error {
+func runAddWithConfig(
+	ctx context.Context,
+	configPath string,
+	args []string,
+) error {
 	flags := flag.NewFlagSet("gh-release add", flag.ContinueOnError)
 	flags.SetOutput(os.Stdout)
 	flags.Usage = addUsage
@@ -115,7 +122,10 @@ func runAddWithConfig(configPath string, args []string) error {
 		return fmt.Errorf("expected exactly one repository URL")
 	}
 
-	repo, err := repository.Parse(context.Background(), args[0])
+	repo, err := repository.Parse(ctx, args[0])
+	if err != nil {
+		return err
+	}
 
 	cfg, err := config.Load(configPath)
 	if err != nil {
