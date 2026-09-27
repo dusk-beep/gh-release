@@ -172,11 +172,3 @@ func (m *Model) resize(width, height int) {
 	m.table.SetWidth(max(20, width-4))
 	m.table.SetHeight(max(5, height-8))
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-
-	return b
-}

@@ -43,7 +43,6 @@ func (s *Service) Fetch(
 		sem := make(chan struct{}, s.concurrency)
 
 		for i, repo := range repos {
-			i, repo := i, repo
 
 			g.Go(func() error {
 				// Acquire a worker slot, but don't wait forever

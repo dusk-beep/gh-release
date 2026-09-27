@@ -43,7 +43,7 @@ func (m Model) View() tea.View {
 
 	tableView := m.table.View()
 
-	for _, line := range strings.Split(tableView, "\n") {
+	for line := range strings.SplitSeq(tableView, "\n") {
 		b.WriteString("│ ")
 		b.WriteString(line)
 		padding := tableWidth - lipgloss.Width(line)
