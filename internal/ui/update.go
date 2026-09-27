@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"gh-release/internal/model"
 
 	"charm.land/bubbles/v2/spinner"
@@ -28,30 +27,35 @@ func fmtReleaseTitle(release model.Release) string {
 }
 
 func (m Model) openSelectedReleaseCmd() tea.Cmd {
-	return func() tea.Msg {
-		row := m.table.SelectedRow()
+	row := m.table.Cursor()
 
-		for _, result := range m.results {
-			if result.Err != nil {
-				continue
-			}
+	if row < 0 || row >= len(m.displayOrder) {
+		return nil
+	}
 
-			if result.Repository.FullName() == row[0] {
-				rendered, err := renderReleaseNotes(
-					result.Release,
-					max(20, m.width-4),
-				)
+	index := m.displayOrder[row]
+	result := m.results[index]
 
-				return releaseNotesMsg{
-					title: fmtReleaseTitle(result.Release),
-					body:  rendered,
-					err:   err,
-				}
+	if result.Err != nil {
+		return func() tea.Msg {
+			return releaseNotesMsg{
+				err: result.Err,
 			}
 		}
+	}
+
+	release := result.Release
+
+	return func() tea.Msg {
+		rendered, err := renderReleaseNotes(
+			release,
+			max(20, m.width-4),
+		)
 
 		return releaseNotesMsg{
-			err: fmt.Errorf("release not found"),
+			title: release.Tag,
+			body:  rendered,
+			err:   err,
 		}
 	}
 }

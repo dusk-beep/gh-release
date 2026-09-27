@@ -27,6 +27,8 @@ type Model struct {
 	width  int
 	height int
 
+	displayOrder []int
+
 	showRelease     bool
 	releaseMarkdown string
 	releaseTitle    string

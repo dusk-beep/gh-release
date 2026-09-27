@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/table"
+	"charm.land/lipgloss/v2"
 
 	"gh-release/internal/model"
 )
@@ -41,8 +42,10 @@ func newTable() table.Model {
 	styles.Header = styles.Header.
 		Bold(true)
 
-	styles.Selected = styles.Selected.
-		Bold(true)
+	styles.Selected = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("15")).
+		Background(lipgloss.Color("237"))
 
 	t.SetStyles(styles)
 
@@ -50,13 +53,16 @@ func newTable() table.Model {
 }
 
 func (m *Model) rebuildTable() {
-	results := append([]model.RepositoryResult(nil), m.results...)
+	indices := make([]int, len(m.results))
 
-	sort.SliceStable(results, func(i, j int) bool {
-		a := results[i].Release.PublishedAt
-		b := results[j].Release.PublishedAt
+	for i := range indices {
+		indices[i] = i
+	}
 
-		// Releases with no date go last.
+	sort.SliceStable(indices, func(i, j int) bool {
+		a := m.results[indices[i]].Release.PublishedAt
+		b := m.results[indices[j]].Release.PublishedAt
+
 		if a.IsZero() {
 			return false
 		}
@@ -68,10 +74,12 @@ func (m *Model) rebuildTable() {
 		return a.After(b)
 	})
 
-	rows := make([]table.Row, 0, len(results))
+	m.displayOrder = indices
 
-	for _, result := range results {
-		rows = append(rows, resultRow(result))
+	rows := make([]table.Row, 0, len(indices))
+
+	for _, index := range indices {
+		rows = append(rows, resultRow(m.results[index]))
 	}
 
 	m.table.SetRows(rows)
@@ -90,19 +98,21 @@ func resultRow(result model.RepositoryResult) table.Row {
 	release := result.Release
 
 	return table.Row{
-		release.Repository.FullName(),
+		formatRepository(release.Repository),
 		releaseName(release),
 		formatPublished(release.PublishedAt),
 		releaseStatus(release),
 	}
 }
 
-func releaseName(release model.Release) string {
-	if release.Name == "" || release.Name == release.Tag {
-		return release.Tag
-	}
+func formatRepository(repo model.Repository) string {
+	return repositoryOwnerStyle.Render(repo.Owner) +
+		repositorySeparatorStyle.Render("/") +
+		repositoryNameStyle.Render(repo.Name)
+}
 
-	return release.Tag + " · " + release.Name
+func releaseName(release model.Release) string {
+	return releaseStyle.Render(release.Tag)
 }
 
 func formatPublished(t time.Time) string {
@@ -124,11 +134,13 @@ func formatPublished(t time.Time) string {
 func releaseStatus(release model.Release) string {
 	switch {
 	case release.Draft:
-		return "draft"
+		return statusDraftStyle.Render("draft")
+
 	case release.Prerelease:
-		return "pre-release"
+		return statusPrereleaseStyle.Render("pre-release")
+
 	default:
-		return "release"
+		return statusReleaseStyle.Render("release")
 	}
 }
 
@@ -147,10 +159,10 @@ func shortError(err error) string {
 func (m *Model) resizeTable() {
 	width := max(60, m.width-6)
 
-	repositoryWidth := width * 35 / 100
+	repositoryWidth := width * 40 / 100
 	releaseWidth := width * 30 / 100
-	publishedWidth := width * 20 / 100
-	statusWidth := width * 15 / 100
+	publishedWidth := width * 18 / 100
+	statusWidth := width - repositoryWidth - releaseWidth - publishedWidth
 
 	m.table.SetColumns([]table.Column{
 		{
