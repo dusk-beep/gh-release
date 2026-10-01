@@ -111,7 +111,7 @@ func checkForgejo(ctx context.Context, base *url.URL) error {
 	}
 
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	}
 
 	resp, err := client.Do(req)
