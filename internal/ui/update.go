@@ -1,10 +1,9 @@
 package ui
 
 import (
-	"gh-release/internal/model"
-
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
+	"os/exec"
 )
 
 type startFetchMsg struct{}
@@ -16,14 +15,6 @@ func (m Model) Init() tea.Cmd {
 			return startFetchMsg{}
 		},
 	)
-}
-
-func fmtReleaseTitle(release model.Release) string {
-	if release.Name != "" && release.Name != release.Tag {
-		return release.Tag + " — " + release.Name
-	}
-
-	return release.Tag
 }
 
 func (m Model) openSelectedReleaseCmd() tea.Cmd {
@@ -60,6 +51,37 @@ func (m Model) openSelectedReleaseCmd() tea.Cmd {
 	}
 }
 
+func (m Model) openSelectedRepositoryCmd() tea.Cmd {
+	row := m.table.Cursor()
+
+	if row < 0 || row >= len(m.displayOrder) {
+		return nil
+	}
+
+	index := m.displayOrder[row]
+	result := m.results[index]
+
+	if result.Err != nil {
+		return nil
+	}
+
+	url := result.Release.Repository.URL()
+	if url == "" {
+		return nil
+	}
+
+	return openBrowser(url)
+}
+
+func openBrowser(url string) tea.Cmd {
+	return tea.ExecProcess(
+		exec.Command("xdg-open", url),
+		func(err error) tea.Msg {
+			return nil
+		},
+	)
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -92,6 +114,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "end", "G":
 				m.releaseScroll = max(0, m.releaseScroll+100000)
+
 			}
 
 			return m, nil
@@ -107,6 +130,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.fetchCancel = nil
 			}
 			return m, tea.Quit
+
+		case "o":
+			return m, m.openSelectedRepositoryCmd()
 
 		}
 

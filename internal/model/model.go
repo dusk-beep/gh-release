@@ -22,6 +22,22 @@ func (r Repository) Key() string {
 	return host + "/" + r.Owner + "/" + r.Name
 }
 
+func (r Repository) URL() string {
+	host := r.Host
+	if host == "" {
+		switch r.Provider {
+		case "github":
+			host = "github.com"
+		case "gitlab":
+			host = "gitlab.com"
+		default:
+			host = r.Provider
+		}
+	}
+
+	return "https://" + host + "/" + r.Owner + "/" + r.Name
+}
+
 type Release struct {
 	ID          string
 	Repository  Repository
