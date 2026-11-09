@@ -11,28 +11,31 @@ import (
 )
 
 type Model struct {
-	service *service.Service
-	repos   []model.Repository
-
-	results []model.RepositoryResult
-	table   table.Model
-	spinner spinner.Model
-
-	loading bool
-
 	fetchCtx     context.Context
+	service      *service.Service
 	fetchCancel  context.CancelFunc
 	fetchResults <-chan service.Result
+
+	releaseMarkdown string
+	releaseTitle    string
+	repos           []model.Repository
+
+	results []model.RepositoryResult
+
+	displayOrder []int
+
+	spinner spinner.Model
+
+	table table.Model
 
 	width  int
 	height int
 
-	displayOrder []int
+	releaseScroll int
 
-	showRelease     bool
-	releaseMarkdown string
-	releaseTitle    string
-	releaseScroll   int
+	loading bool
+
+	showRelease bool
 }
 
 func New(svc *service.Service, repos []model.Repository) Model {

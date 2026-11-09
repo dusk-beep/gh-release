@@ -11,11 +11,11 @@ import (
 )
 
 type Config struct {
-	Concurrency  int                `toml:"concurrency"`
 	GitHub       ProviderConfig     `toml:"github"`
 	GitLab       ProviderConfig     `toml:"gitlab"`
 	Forgejo      ProviderConfig     `toml:"forgejo"`
 	Repositories []RepositoryConfig `toml:"repositories"`
+	Concurrency  int                `toml:"concurrency"`
 }
 
 type ProviderConfig struct {

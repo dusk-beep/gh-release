@@ -28,13 +28,13 @@ func (p *Provider) Name() string {
 }
 
 type releaseResponse struct {
-	ID          int64      `json:"id"`
+	CreatedAt   *time.Time `json:"created_at"`
+	PublishedAt *time.Time `json:"published_at"`
 	TagName     string     `json:"tag_name"`
 	Name        string     `json:"name"`
 	Body        string     `json:"body"`
 	HTMLURL     string     `json:"html_url"`
-	CreatedAt   *time.Time `json:"created_at"`
-	PublishedAt *time.Time `json:"published_at"`
+	ID          int64      `json:"id"`
 	Prerelease  bool       `json:"prerelease"`
 	Draft       bool       `json:"draft"`
 }

@@ -15,8 +15,8 @@ type Service struct {
 }
 
 type Result struct {
-	Index  int
 	Result model.RepositoryResult
+	Index  int
 }
 
 func New(registry *provider.Registry, concurrency int) *Service {

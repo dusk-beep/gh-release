@@ -7,14 +7,14 @@ type fetchDoneMsg struct {
 }
 
 type releaseNotesMsg struct {
+	err   error
 	title string
 	body  string
-	err   error
 }
 
 type repositoryResultMsg struct {
-	index  int
 	result model.RepositoryResult
+	index  int
 }
 
 type fetchCompleteMsg struct{}
